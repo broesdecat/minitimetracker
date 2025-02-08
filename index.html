@@ -1,57 +1,102 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <style data-vite-theme="" data-inject-first="">:root {
-      --background: 0 0% 100%;
---foreground: 20 14.3% 4.1%;
---muted: 60 4.8% 95.9%;
---muted-foreground: 25 5.3% 44.7%;
---popover: 0 0% 100%;
---popover-foreground: 20 14.3% 4.1%;
---card: 0 0% 100%;
---card-foreground: 20 14.3% 4.1%;
---border: 20 5.9% 90%;
---input: 20 5.9% 90%;
---primary: 222 47% 11%;
---primary-foreground: 221 8% 97%;
---secondary: 60 4.8% 95.9%;
---secondary-foreground: 24 9.8% 10%;
---accent: 60 4.8% 95.9%;
---accent-foreground: 24 9.8% 10%;
---destructive: 0 84.2% 60.2%;
---destructive-foreground: 60 9.1% 97.8%;
---ring: 20 14.3% 4.1%;
---radius: 0.5rem;
-  }
-  .dark {
-      --background: 240 10% 3.9%;
---foreground: 0 0% 98%;
---muted: 240 3.7% 15.9%;
---muted-foreground: 240 5% 64.9%;
---popover: 240 10% 3.9%;
---popover-foreground: 0 0% 98%;
---card: 240 10% 3.9%;
---card-foreground: 0 0% 98%;
---border: 240 3.7% 15.9%;
---input: 240 3.7% 15.9%;
---primary: 222 47% 11%;
---primary-foreground: 221 8% 97%;
---secondary: 240 3.7% 15.9%;
---secondary-foreground: 0 0% 98%;
---accent: 240 3.7% 15.9%;
---accent-foreground: 0 0% 98%;
---destructive: 0 62.8% 30.6%;
---destructive-foreground: 0 0% 98%;
---ring: 240 4.9% 83.9%;
---radius: 0.5rem;
-  }</style>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase Timer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .active {
+            background-color: lightcoral;
+            color: white;
+        }
+        .log {
+            margin-top: 20px;
+            border-top: 1px solid #ccc;
+            padding-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Phase Timer</h1>
+    <div class="button-container">
+        <button onclick="toggleTimer(this)">Setup</button>
+        <button onclick="toggleTimer(this)">Round Prep</button>
+        <button onclick="toggleTimer(this)">Glenn</button>
+        <button onclick="toggleTimer(this)">Broes</button>
+        <button onclick="toggleTimer(this)">Cloots</button>
+        <button onclick="toggleTimer(this)">Xavier</button>
+        <button onclick="toggleTimer(this)">Barney</button>
+        <button onclick="toggleTimer(this)">Outpost</button>
+        <button onclick="toggleTimer(this)">Monsters</button>
+    </div>
+    <div class="log">
+        <h2>Phase History</h2>
+        <ul id="logList"></ul>
+        <button onclick="exportLogs()">Export Logs</button>
+    </div>
 
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script type="module" crossorigin src="assets/index-qSNJff5u.js"></script>
-    <link rel="stylesheet" crossorigin href="assets/index-Cy-JfzXr.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+    <script>
+        let timers = {};
+        let intervals = {};
+        
+        function toggleTimer(button) {
+            let phase = button.textContent.split(' - ')[0];
+            let now = new Date();
+            
+            if (!timers[phase]) {
+                // Start timer
+                timers[phase] = now;
+                button.classList.add("active");
+                button.dataset.startTime = now.getTime();
+                
+                // Update duration display
+                intervals[phase] = setInterval(() => {
+                    let elapsed = Math.floor((new Date().getTime() - timers[phase].getTime()) / 60000);
+                    button.textContent = `${phase} - ${elapsed}m`;
+                }, 1000);
+            } else {
+                // End timer, log the entry
+                let startTime = timers[phase];
+                let duration = Math.floor((now - startTime) / 60000); // in minutes
+                
+                let logList = document.getElementById("logList");
+                let logEntry = document.createElement("li");
+                logEntry.textContent = `${phase} - Start: ${startTime.toLocaleTimeString()}, Duration: ${duration}m`;
+                logList.appendChild(logEntry);
+                
+                clearInterval(intervals[phase]);
+                delete timers[phase];
+                delete intervals[phase];
+                button.textContent = phase;
+                button.classList.remove("active");
+            }
+        }
+
+        function exportLogs() {
+            let logEntries = document.querySelectorAll("#logList li");
+            let logs = Array.from(logEntries).map(li => li.textContent).join("\n");
+            let blob = new Blob([logs], { type: "text/plain" });
+            let a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "phase_logs.txt";
+            a.click();
+        }
+    </script>
+</body>
 </html>
