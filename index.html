@@ -1,102 +1,256 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phase Timer</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-        }
-        .button-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin: 20px;
-        }
-        button {
-            margin: 5px;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        .active {
-            background-color: lightcoral;
-            color: white;
-        }
-        .log {
-            margin-top: 20px;
-            border-top: 1px solid #ccc;
-            padding-top: 10px;
-        }
-    </style>
-</head>
-<body>
-    <h1>Phase Timer</h1>
-    <div class="button-container">
-        <button onclick="toggleTimer(this)">Setup</button>
-        <button onclick="toggleTimer(this)">Round Prep</button>
-        <button onclick="toggleTimer(this)">Glenn</button>
-        <button onclick="toggleTimer(this)">Broes</button>
-        <button onclick="toggleTimer(this)">Cloots</button>
-        <button onclick="toggleTimer(this)">Xavier</button>
-        <button onclick="toggleTimer(this)">Barney</button>
-        <button onclick="toggleTimer(this)">Outpost</button>
-        <button onclick="toggleTimer(this)">Monsters</button>
-    </div>
-    <div class="log">
-        <h2>Phase History</h2>
-        <ul id="logList"></ul>
-        <button onclick="exportLogs()">Export Logs</button>
-    </div>
-
-    <script>
-        let timers = {};
-        let intervals = {};
-        
-        function toggleTimer(button) {
-            let phase = button.textContent.split(' - ')[0];
-            let now = new Date();
-            
-            if (!timers[phase]) {
-                // Start timer
-                timers[phase] = now;
-                button.classList.add("active");
-                button.dataset.startTime = now.getTime();
-                
-                // Update duration display
-                intervals[phase] = setInterval(() => {
-                    let elapsed = Math.floor((new Date().getTime() - timers[phase].getTime()) / 60000);
-                    button.textContent = `${phase} - ${elapsed}m`;
-                }, 1000);
-            } else {
-                // End timer, log the entry
-                let startTime = timers[phase];
-                let duration = Math.floor((now - startTime) / 60000); // in minutes
-                
-                let logList = document.getElementById("logList");
-                let logEntry = document.createElement("li");
-                logEntry.textContent = `${phase} - Start: ${startTime.toLocaleTimeString()}, Duration: ${duration}m`;
-                logList.appendChild(logEntry);
-                
-                clearInterval(intervals[phase]);
-                delete timers[phase];
-                delete intervals[phase];
-                button.textContent = phase;
-                button.classList.remove("active");
-            }
-        }
-
-        function exportLogs() {
-            let logEntries = document.querySelectorAll("#logList li");
-            let logs = Array.from(logEntries).map(li => li.textContent).join("\n");
-            let blob = new Blob([logs], { type: "text/plain" });
-            let a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = "phase_logs.txt";
-            a.click();
-        }
-    </script>
-</body>
+<!DOCTYPE html>  
+<html lang="en">  
+  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+    <title>Phase Timer</title>  
+    <style>  
+        body {  
+            font-family: Arial, sans-serif;  
+            text-align: center;  
+        }  
+  
+        .button-container {  
+            display: flex;  
+            flex-wrap: wrap;  
+            justify-content: center;  
+            margin: 20px;  
+        }  
+  
+        .phase-buttons {  
+            width: 100%;  
+            display: flex;  
+            justify-content: center;  
+            flex-wrap: wrap;  
+            margin-bottom: 10px;  
+        }  
+  
+        .player-buttons {  
+            width: 100%;  
+            display: flex;  
+            justify-content: center;  
+            flex-wrap: wrap;  
+            margin-top: 10px;  
+        }  
+  
+        button {  
+            margin: 5px;  
+            padding: 10px 20px;  
+            font-size: 16px;  
+            cursor: pointer;  
+            width: 150px; /* Fixed width to prevent size changes */  
+            box-sizing: border-box;  
+            transition: background-color 0.3s, color 0.3s;  
+        }  
+  
+        .active {  
+            background-color: lightcoral;  
+            color: white;  
+        }  
+  
+        /* Style for player buttons */  
+        .player-button {  
+            background-color: #4CAF50; /* Green background */  
+            color: white;  
+        }  
+  
+        .player-button.active {  
+            background-color: #45a049; /* Darker green when active */  
+        }  
+  
+        .log {  
+            margin-top: 20px;  
+            border-top: 1px solid #ccc;  
+            padding-top: 10px;  
+        }  
+  
+        /* Prevent buttons from growing when showing duration */  
+        .button-text {  
+            display: inline-block;  
+            width: 130px; /* Adjusted to fit text plus potential duration */  
+            text-align: center;  
+        }  
+    </style>  
+</head>  
+  
+<body>  
+    <h1>Phase Timer</h1>  
+    <div class="button-container">  
+        <div class="phase-buttons">  
+            <button id="setupBtn" onclick="toggleTimer(this)">Setup</button>  
+            <button id="roundPrepBtn" onclick="toggleTimer(this)">Round Prep</button>  
+            <button onclick="toggleTimer(this)">Outpost</button>  
+            <button onclick="toggleTimer(this)">Monsters</button>  
+        </div>  
+        <div class="player-buttons">  
+            <button class="player-button" onclick="toggleTimer(this)">Barney</button>  
+            <button class="player-button" onclick="toggleTimer(this)">Broes</button>  
+            <button class="player-button" onclick="toggleTimer(this)">Cloots</button>  
+            <button class="player-button" onclick="toggleTimer(this)">Glenn</button>  
+            <button class="player-button" onclick="toggleTimer(this)">Xavier</button>  
+        </div>  
+    </div>  
+    <div class="log">  
+        <h2>Phase History</h2>  
+        <ul id="logList"></ul>  
+        <button onclick="exportLogs()">Export Logs</button>  
+    </div>  
+  
+    <script>  
+        let timers = {};  
+        let intervals = {};  
+  
+        // List of player names for easy reference  
+        const players = ["Barney", "Broes", "Cloots", "Glenn", "Xavier"];  
+        const setupButtonId = "setupBtn";  
+        const roundPrepButtonId = "roundPrepBtn";  
+  
+        // Warn user before leaving the page  
+        window.addEventListener('beforeunload', function (e) {  
+            const confirmationMessage = 'Are you sure you want to leave? Logs will be lost.';  
+            e.returnValue = confirmationMessage; // Gecko, Trident, Chrome 34+  
+            return confirmationMessage; // Gecko, WebKit, Chrome <34  
+        });  
+  
+        function toggleTimer(button) {  
+            let phase = button.textContent.split(' - ')[0];  
+            let now = new Date();  
+  
+            if (!timers[phase]) {  
+                // Start timer  
+                timers[phase] = now;  
+                button.classList.add("active");  
+                button.dataset.startTime = now.getTime();  
+  
+                // Update duration display  
+                intervals[phase] = setInterval(() => {  
+                    let elapsed = Math.ceil((new Date().getTime() - timers[phase].getTime()) / 60000);  
+                    elapsed = elapsed < 1 ? 1 : elapsed; // Ensure at least 1 minute  
+                    button.textContent = `${phase} - ${elapsed}m`;  
+                }, 1000);  
+  
+                // If the phase is "Round Prep", start all player timers  
+                if (phase === "Round Prep") {  
+                    players.forEach(player => {  
+                        let playerBtn = document.querySelector(`button.player-button:contains("${player}")`);  
+                        // Custom selector to find button by text  
+                        playerBtn = Array.from(document.querySelectorAll('button.player-button')).find(btn => btn.textContent.startsWith(player));  
+                        if (playerBtn && !timers[player]) {  
+                            toggleTimer(playerBtn);  
+                        }  
+                    });  
+                }  
+            } else {  
+                // End timer, log the entry  
+                let startTime = new Date(timers[phase]);  
+                let duration = Math.ceil((now - startTime) / 60000); // in minutes  
+                duration = duration < 1 ? 1 : duration; // Ensure at least 1 minute  
+  
+                let logList = document.getElementById("logList");  
+                let logEntry = document.createElement("li");  
+                logEntry.textContent = `${phase} - Start: ${startTime.toLocaleTimeString()}, Duration: ${duration}m`;  
+                logList.appendChild(logEntry);  
+  
+                clearInterval(intervals[phase]);  
+                delete timers[phase];  
+                delete intervals[phase];  
+  
+                button.textContent = phase;  
+                button.classList.remove("active");  
+  
+                // If the phase is "Round Prep", end all player timers  
+                if (phase === "Round Prep") {  
+                    players.forEach(player => {  
+                        if (timers[player]) {  
+                            let playerBtn = Array.from(document.querySelectorAll('button.player-button')).find(btn => btn.textContent.startsWith(player));  
+                            if (playerBtn) {  
+                                toggleTimer(playerBtn);  
+                            }  
+                        }  
+                    });  
+                }  
+            }  
+        }  
+  
+        function exportLogs() {  
+            let logEntries = document.querySelectorAll("#logList li");  
+            let logs = Array.from(logEntries).map(li => li.textContent).join("\n");  
+            let blob = new Blob([logs], { type: "text/plain" });  
+            let a = document.createElement("a");  
+            a.href = URL.createObjectURL(blob);  
+            let timestamp = new Date().toISOString().replace(/[:\-T]/g, "").split(".")[0];  
+            a.download = `phase_logs_${timestamp}.txt`;  
+            a.click();  
+        }  
+  
+        // Fix for :contains selector since it's not supported. Using alternative approach  
+        // Updated toggleTimer function's Round Prep section with a compatible selector  
+  
+        // Alternative approach: define a function to get button by exact text  
+        function getButtonByText(text) {  
+            return Array.from(document.querySelectorAll('button')).find(btn => btn.textContent.startsWith(text));  
+        }  
+  
+        // Update toggleTimer to use getButtonByText  
+        function toggleTimer(button) {  
+            let phase = button.textContent.split(' - ')[0];  
+            let now = new Date();  
+  
+            if (!timers[phase]) {  
+                // Start timer  
+                timers[phase] = now;  
+                button.classList.add("active");  
+                button.dataset.startTime = now.getTime();  
+  
+                // Update duration display  
+                intervals[phase] = setInterval(() => {  
+                    let elapsed = Math.ceil((new Date().getTime() - timers[phase].getTime()) / 60000);  
+                    elapsed = elapsed < 1 ? 1 : elapsed; // Ensure at least 1 minute  
+                    button.textContent = `${phase} - ${elapsed}m`;  
+                }, 1000);  
+  
+                // If the phase is "Round Prep", start all player timers  
+                if (phase === "Round Prep") {  
+                    players.forEach(player => {  
+                        let playerBtn = getButtonByText(player);  
+                        if (playerBtn && !timers[player]) {  
+                            toggleTimer(playerBtn);  
+                        }  
+                    });  
+                }  
+            } else {  
+                // End timer, log the entry  
+                let startTime = new Date(timers[phase]);  
+                let duration = Math.ceil((now - startTime) / 60000); // in minutes  
+                duration = duration < 1 ? 1 : duration; // Ensure at least 1 minute  
+  
+                let logList = document.getElementById("logList");  
+                let logEntry = document.createElement("li");  
+                logEntry.textContent = `${phase} - Start: ${startTime.toLocaleTimeString()}, Duration: ${duration}m`;  
+                logList.appendChild(logEntry);  
+  
+                clearInterval(intervals[phase]);  
+                delete timers[phase];  
+                delete intervals[phase];  
+  
+                button.textContent = phase;  
+                button.classList.remove("active");  
+  
+                // If the phase is "Round Prep", end all player timers  
+                if (phase === "Round Prep") {  
+                    players.forEach(player => {  
+                        if (timers[player]) {  
+                            let playerBtn = getButtonByText(player);  
+                            if (playerBtn) {  
+                                toggleTimer(playerBtn);  
+                            }  
+                        }  
+                    });  
+                }  
+            }  
+        }  
+    </script>  
+</body>  
+  
 </html>
