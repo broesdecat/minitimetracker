@@ -1,256 +1,963 @@
-<!DOCTYPE html>  
-<html lang="en">  
-  
-<head>  
-    <meta charset="UTF-8">  
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
-    <title>Phase Timer</title>  
-    <style>  
-        body {  
-            font-family: Arial, sans-serif;  
-            text-align: center;  
-        }  
-  
-        .button-container {  
-            display: flex;  
-            flex-wrap: wrap;  
-            justify-content: center;  
-            margin: 20px;  
-        }  
-  
-        .phase-buttons {  
-            width: 100%;  
-            display: flex;  
-            justify-content: center;  
-            flex-wrap: wrap;  
-            margin-bottom: 10px;  
-        }  
-  
-        .player-buttons {  
-            width: 100%;  
-            display: flex;  
-            justify-content: center;  
-            flex-wrap: wrap;  
-            margin-top: 10px;  
-        }  
-  
-        button {  
-            margin: 5px;  
-            padding: 10px 20px;  
-            font-size: 16px;  
-            cursor: pointer;  
-            width: 150px; /* Fixed width to prevent size changes */  
-            box-sizing: border-box;  
-            transition: background-color 0.3s, color 0.3s;  
-        }  
-  
-        .active {  
-            background-color: lightcoral;  
-            color: white;  
-        }  
-  
-        /* Style for player buttons */  
-        .player-button {  
-            background-color: #4CAF50; /* Green background */  
-            color: white;  
-        }  
-  
-        .player-button.active {  
-            background-color: #45a049; /* Darker green when active */  
-        }  
-  
-        .log {  
-            margin-top: 20px;  
-            border-top: 1px solid #ccc;  
-            padding-top: 10px;  
-        }  
-  
-        /* Prevent buttons from growing when showing duration */  
-        .button-text {  
-            display: inline-block;  
-            width: 130px; /* Adjusted to fit text plus potential duration */  
-            text-align: center;  
-        }  
-    </style>  
-</head>  
-  
-<body>  
-    <h1>Phase Timer</h1>  
-    <div class="button-container">  
-        <div class="phase-buttons">  
-            <button id="setupBtn" onclick="toggleTimer(this)">Setup</button>  
-            <button id="roundPrepBtn" onclick="toggleTimer(this)">Round Prep</button>  
-            <button onclick="toggleTimer(this)">Outpost</button>  
-            <button onclick="toggleTimer(this)">Monsters</button>  
-        </div>  
-        <div class="player-buttons">  
-            <button class="player-button" onclick="toggleTimer(this)">Barney</button>  
-            <button class="player-button" onclick="toggleTimer(this)">Broes</button>  
-            <button class="player-button" onclick="toggleTimer(this)">Cloots</button>  
-            <button class="player-button" onclick="toggleTimer(this)">Glenn</button>  
-            <button class="player-button" onclick="toggleTimer(this)">Xavier</button>  
-        </div>  
-    </div>  
-    <div class="log">  
-        <h2>Phase History</h2>  
-        <ul id="logList"></ul>  
-        <button onclick="exportLogs()">Export Logs</button>  
-    </div>  
-  
-    <script>  
-        let timers = {};  
-        let intervals = {};  
-  
-        // List of player names for easy reference  
-        const players = ["Barney", "Broes", "Cloots", "Glenn", "Xavier"];  
-        const setupButtonId = "setupBtn";  
-        const roundPrepButtonId = "roundPrepBtn";  
-  
-        // Warn user before leaving the page  
-        window.addEventListener('beforeunload', function (e) {  
-            const confirmationMessage = 'Are you sure you want to leave? Logs will be lost.';  
-            e.returnValue = confirmationMessage; // Gecko, Trident, Chrome 34+  
-            return confirmationMessage; // Gecko, WebKit, Chrome <34  
-        });  
-  
-        function toggleTimer(button) {  
-            let phase = button.textContent.split(' - ')[0];  
-            let now = new Date();  
-  
-            if (!timers[phase]) {  
-                // Start timer  
-                timers[phase] = now;  
-                button.classList.add("active");  
-                button.dataset.startTime = now.getTime();  
-  
-                // Update duration display  
-                intervals[phase] = setInterval(() => {  
-                    let elapsed = Math.ceil((new Date().getTime() - timers[phase].getTime()) / 60000);  
-                    elapsed = elapsed < 1 ? 1 : elapsed; // Ensure at least 1 minute  
-                    button.textContent = `${phase} - ${elapsed}m`;  
-                }, 1000);  
-  
-                // If the phase is "Round Prep", start all player timers  
-                if (phase === "Round Prep") {  
-                    players.forEach(player => {  
-                        let playerBtn = document.querySelector(`button.player-button:contains("${player}")`);  
-                        // Custom selector to find button by text  
-                        playerBtn = Array.from(document.querySelectorAll('button.player-button')).find(btn => btn.textContent.startsWith(player));  
-                        if (playerBtn && !timers[player]) {  
-                            toggleTimer(playerBtn);  
-                        }  
-                    });  
-                }  
-            } else {  
-                // End timer, log the entry  
-                let startTime = new Date(timers[phase]);  
-                let duration = Math.ceil((now - startTime) / 60000); // in minutes  
-                duration = duration < 1 ? 1 : duration; // Ensure at least 1 minute  
-  
-                let logList = document.getElementById("logList");  
-                let logEntry = document.createElement("li");  
-                logEntry.textContent = `${phase} - Start: ${startTime.toLocaleTimeString()}, Duration: ${duration}m`;  
-                logList.appendChild(logEntry);  
-  
-                clearInterval(intervals[phase]);  
-                delete timers[phase];  
-                delete intervals[phase];  
-  
-                button.textContent = phase;  
-                button.classList.remove("active");  
-  
-                // If the phase is "Round Prep", end all player timers  
-                if (phase === "Round Prep") {  
-                    players.forEach(player => {  
-                        if (timers[player]) {  
-                            let playerBtn = Array.from(document.querySelectorAll('button.player-button')).find(btn => btn.textContent.startsWith(player));  
-                            if (playerBtn) {  
-                                toggleTimer(playerBtn);  
-                            }  
-                        }  
-                    });  
-                }  
-            }  
-        }  
-  
-        function exportLogs() {  
-            let logEntries = document.querySelectorAll("#logList li");  
-            let logs = Array.from(logEntries).map(li => li.textContent).join("\n");  
-            let blob = new Blob([logs], { type: "text/plain" });  
-            let a = document.createElement("a");  
-            a.href = URL.createObjectURL(blob);  
-            let timestamp = new Date().toISOString().replace(/[:\-T]/g, "").split(".")[0];  
-            a.download = `phase_logs_${timestamp}.txt`;  
-            a.click();  
-        }  
-  
-        // Fix for :contains selector since it's not supported. Using alternative approach  
-        // Updated toggleTimer function's Round Prep section with a compatible selector  
-  
-        // Alternative approach: define a function to get button by exact text  
-        function getButtonByText(text) {  
-            return Array.from(document.querySelectorAll('button')).find(btn => btn.textContent.startsWith(text));  
-        }  
-  
-        // Update toggleTimer to use getButtonByText  
-        function toggleTimer(button) {  
-            let phase = button.textContent.split(' - ')[0];  
-            let now = new Date();  
-  
-            if (!timers[phase]) {  
-                // Start timer  
-                timers[phase] = now;  
-                button.classList.add("active");  
-                button.dataset.startTime = now.getTime();  
-  
-                // Update duration display  
-                intervals[phase] = setInterval(() => {  
-                    let elapsed = Math.ceil((new Date().getTime() - timers[phase].getTime()) / 60000);  
-                    elapsed = elapsed < 1 ? 1 : elapsed; // Ensure at least 1 minute  
-                    button.textContent = `${phase} - ${elapsed}m`;  
-                }, 1000);  
-  
-                // If the phase is "Round Prep", start all player timers  
-                if (phase === "Round Prep") {  
-                    players.forEach(player => {  
-                        let playerBtn = getButtonByText(player);  
-                        if (playerBtn && !timers[player]) {  
-                            toggleTimer(playerBtn);  
-                        }  
-                    });  
-                }  
-            } else {  
-                // End timer, log the entry  
-                let startTime = new Date(timers[phase]);  
-                let duration = Math.ceil((now - startTime) / 60000); // in minutes  
-                duration = duration < 1 ? 1 : duration; // Ensure at least 1 minute  
-  
-                let logList = document.getElementById("logList");  
-                let logEntry = document.createElement("li");  
-                logEntry.textContent = `${phase} - Start: ${startTime.toLocaleTimeString()}, Duration: ${duration}m`;  
-                logList.appendChild(logEntry);  
-  
-                clearInterval(intervals[phase]);  
-                delete timers[phase];  
-                delete intervals[phase];  
-  
-                button.textContent = phase;  
-                button.classList.remove("active");  
-  
-                // If the phase is "Round Prep", end all player timers  
-                if (phase === "Round Prep") {  
-                    players.forEach(player => {  
-                        if (timers[player]) {  
-                            let playerBtn = getButtonByText(player);  
-                            if (playerBtn) {  
-                                toggleTimer(playerBtn);  
-                            }  
-                        }  
-                    });  
-                }  
-            }  
-        }  
-    </script>  
-</body>  
-  
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase Timer</title>
+    <style>
+		.initial-dialog {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.5);
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			z-index: 1000;
+		}
+
+		.dialog-content {
+			background-color: white;
+			padding: 30px;
+			border-radius: 8px;
+			box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+			text-align: center;
+			max-width: 90%;
+			width: 400px;
+		}
+
+		.dialog-content h2 {
+			margin-top: 0;
+		}
+
+		.dialog-content select {
+			margin: 20px 0;
+			width: 80%;
+		}
+
+		.dialog-button {
+			padding: 12px 25px;
+			background-color: #4285f4;
+			color: white;
+			border: none;
+			border-radius: 5px;
+			font-size: 16px;
+			cursor: pointer;
+		}
+	
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px 0;
+            gap: 15px;
+        }
+
+        .section {
+            width: 100%;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #f8f8f8;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .phase-buttons, .player-buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        button {
+            margin: 5px;
+            padding: 12px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            min-width: 150px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0%;
+            height: 4px;
+            background-color: #4285f4;
+            transition: width 0.3s;
+        }
+
+        button.active {
+            background-color: #e0f2f1;
+            border-color: #4285f4;
+            box-shadow: 0 0 5px rgba(66, 133, 244, 0.5);
+        }
+
+        button.active:after {
+            width: 100%;
+        }
+
+        .phase-button.active {
+            background-color: #bbdefb;
+        }
+
+        .player-button {
+            background-color: #e8f5e9;
+        }
+
+        .player-button.active {
+            background-color: #c8e6c9;
+        }
+
+        .log-section {
+            margin-top: 30px;
+            width: 100%;
+        }
+
+        .log-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        .log-table th, .log-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .log-table th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
+        }
+
+        .log-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .editable {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 5px;
+            width: 50px;
+        }
+
+    .player-summary-section {
+        margin: 20px 0;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .player-time-cards {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+        margin-top: 10px;
+    }
+
+    .player-time-card {
+        background-color: #f0f0f0;
+        border-radius: 12px;
+        padding: 20px;
+        min-width: 180px;
+        text-align: center;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        flex-grow: 1;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .player-name {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    .player-time {
+        font-size: 24px;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+
+    .player-time-unit {
+        font-size: 14px;
+        opacity: 0.8;
+    }
+
+    .player-seconds {
+        font-size: 18px;
+        opacity: 0.7;
+    }
+
+    /* Gauge styling */
+    .gauge-container {
+        position: relative;
+        height: 8px;
+        background-color: #e0e0e0;
+        border-radius: 4px;
+        margin-top: 10px;
+        overflow: hidden;
+    }
+
+    .gauge-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.5s ease-out;
+    }
+    
+    /* Active timer indicator */
+    .active-timer {
+        border-bottom: 4px solid #4285f4;
+        animation: none;
+    }
+
+        .player-selector {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f8f8;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        select {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .action-buttons {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .action-button {
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: none;
+            background-color: #4285f4;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .action-button:hover {
+            background-color: #3367d6;
+        }
+
+        /* Tablet responsiveness */
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .phase-buttons, .player-buttons {
+                justify-content: space-around;
+            }
+            
+            button {
+                min-width: 130px;
+                font-size: 15px;
+            }
+            
+            .log-section {
+                overflow-x: auto;
+            }
+            
+            .player-time-card {
+                min-width: 150px;
+            }
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 767px) {
+            button {
+                min-width: 120px;
+                font-size: 14px;
+                padding: 10px;
+            }
+            
+            .log-table th, .log-table td {
+                padding: 8px;
+                font-size: 14px;
+            }
+            
+            .player-time-card {
+                min-width: 140px;
+            }
+            
+            .player-name {
+                font-size: 20px;
+            }
+            
+            .player-time {
+                font-size: 30px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+	<div id="initialDialog" class="initial-dialog">
+		<div class="dialog-content">
+			<h2>Who does not play a character today?</h2>
+			<select id="dialogAbsentPlayer">
+				<option value="none">All players present</option>
+				<option value="Barney">Barney</option>
+				<option value="Broes">Broes</option>
+				<option value="Cloots">Cloots</option>
+				<option value="Glenn">Glenn</option>
+				<option value="Xavier">Xavier</option>
+			</select>
+			<br>
+			<button id="startButton" class="dialog-button">Start Timer</button>
+		</div>
+	</div>
+
+    <h1>Phase Timer</h1>
+	
+	<div class="player-summary-section">
+		<div class="player-time-cards" id="playerTimeCards">
+			<!-- Will be populated dynamically -->
+		</div>
+	</div>
+
+    <div class="button-container">
+        <div class="section">
+            <h2>Game Phases</h2>
+            <div class="phase-buttons">
+                <button id="setupBtn" class="phase-button" data-phase="Setup">Setup</button>
+                <button id="roundPrepBtn" class="phase-button" data-phase="Round Prep">Round Prep</button>
+                <button class="phase-button" data-phase="Outpost">Outpost</button>
+                <button class="phase-button" data-phase="Monsters">Monsters</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Player Turns</h2>
+            <div class="player-buttons">
+                <button class="player-button" data-player="Barney">Barney</button>
+                <button class="player-button" data-player="Broes">Broes</button>
+                <button class="player-button" data-player="Cloots">Cloots</button>
+                <button class="player-button" data-player="Glenn">Glenn</button>
+                <button class="player-button" data-player="Xavier">Xavier</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="log-section">
+        <h2>Game Log</h2>
+        <div style="overflow-x: auto;">
+            <table class="log-table">
+                <thead>
+                    <tr>
+                        <th>Phase/Player</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Duration (min)</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="logTableBody">
+                    <!-- Will be populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+        <div class="action-buttons">
+            <button class="action-button" id="exportBtn">Export Logs</button>
+            <button class="action-button" id="clearBtn">Clear Logs</button>
+        </div>
+    </div>
+
+    <script>
+		// Handle initial dialog
+		document.addEventListener('DOMContentLoaded', () => {
+			const initialDialog = document.getElementById('initialDialog');
+			const startButton = document.getElementById('startButton');
+			const dialogAbsentPlayer = document.getElementById('dialogAbsentPlayer');
+			
+			// Store selected absent player when Start button is clicked
+			startButton.addEventListener('click', () => {
+				const selectedPlayer = dialogAbsentPlayer.value;
+				// Hide dialog
+				initialDialog.style.display = 'none';
+				// Update player buttons based on selection
+				updatePlayerButtons(selectedPlayer);
+				// Update player time cards
+				updatePlayerTimeCards(selectedPlayer);
+				// Try to keep screen awake
+				keepScreenAwake();
+				// Start continuous timer update
+				playerTimeSummaryInterval = setInterval(() => updatePlayerTimeCardsLive(selectedPlayer), 1000);
+			});
+		});
+		
+        // State management
+        let timers = {};
+        let intervals = {};
+        let longPressTimer;
+        let longPressDuration = 1000; // 1 second for long press
+        let logs = [];
+		let playerTimeSummaryInterval;
+		let playerSummary = {
+			"Barney": { totalTime: 0 },
+			"Broes": { totalTime: 0 },
+			"Cloots": { totalTime: 0 },
+			"Glenn": { totalTime: 0 },
+			"Xavier": { totalTime: 0 }
+		};
+
+        // Player list
+        const players = ["Barney", "Broes", "Cloots", "Glenn", "Xavier"];
+
+        // Keep screen awake (may not work on all browsers/devices)
+        function keepScreenAwake() {
+            if (navigator.wakeLock) {
+                navigator.wakeLock.request('screen')
+                    .then(wakeLock => {
+                        console.log('Screen wake lock is active');
+                        document.addEventListener('visibilitychange', () => {
+                            if (document.visibilityState === 'visible') {
+                                keepScreenAwake();
+                            }
+                        });
+                    })
+                    .catch(err => {
+                        console.error(`${err.name}, ${err.message}`);
+                    });
+            }
+        }
+
+        // Try to keep screen awake when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            keepScreenAwake();
+            updatePlayerTimeCards();
+            
+            // Add change event listener for absent player dropdown
+            document.getElementById('absentPlayer').addEventListener('change', () => {
+                updatePlayerTimeCards();
+                updatePlayerButtons();
+            });
+			
+			// Add continuous timer update
+			playerTimeSummaryInterval = setInterval(updatePlayerTimeCardsLive, 1000);
+        });
+
+        // Update player buttons visibility based on absent player
+		function updatePlayerButtons(absentPlayer) {
+			// Update visibility of player buttons
+			players.forEach(player => {
+				const playerBtn = document.querySelector(`button[data-player="${player}"]`);
+				if (playerBtn) {
+					if (player === absentPlayer) {
+						playerBtn.style.opacity = "0.5";
+						playerBtn.style.backgroundColor = "#f0f0f0";
+					} else {
+						playerBtn.style.opacity = "1";
+						playerBtn.style.backgroundColor = "#e8f5e9";
+					}
+				}
+			});
+		}
+
+        // Prevent page unload without confirmation
+        window.addEventListener('beforeunload', function (e) {
+            if (logs.length > 0) {
+                const confirmationMessage = 'Are you sure you want to leave? Logs will be lost unless exported.';
+                e.returnValue = confirmationMessage;
+                return confirmationMessage;
+            }
+        });
+
+        // Button event listeners
+        document.querySelectorAll('button[data-phase], button[data-player]').forEach(button => {
+            // Mouse down - start tracking for potential long press
+            button.addEventListener('mousedown', () => {
+                longPressTimer = setTimeout(() => {
+                    cancelTimer(button);
+                }, longPressDuration);
+            });
+
+            button.addEventListener('touchstart', (e) => {
+                longPressTimer = setTimeout(() => {
+                    cancelTimer(button);
+                    e.preventDefault(); // Prevent default touch behavior
+                }, longPressDuration);
+            });
+
+            // Mouse up - clear long press timer and toggle if not long press
+            button.addEventListener('mouseup', () => {
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    toggleTimer(button);
+                }
+            });
+
+            button.addEventListener('touchend', (e) => {
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    toggleTimer(button);
+                    e.preventDefault(); // Prevent default touch behavior
+                }
+            });
+
+            // If mouse leaves the button, clear long press timer
+            button.addEventListener('mouseleave', () => {
+                if (longPressTimer) clearTimeout(longPressTimer);
+            });
+
+            button.addEventListener('touchcancel', () => {
+                if (longPressTimer) clearTimeout(longPressTimer);
+            });
+        });
+
+        // Export logs button
+        document.getElementById('exportBtn').addEventListener('click', exportLogs);
+
+        // Clear logs button
+		document.getElementById('clearBtn').addEventListener('click', () => {
+			if (confirm('Are you sure you want to clear all logs? This cannot be undone.')) {
+				logs = [];
+				updateLogTable();
+				playerSummary = {
+					"Barney": { totalTime: 0 },
+					"Broes": { totalTime: 0 },
+					"Cloots": { totalTime: 0 },
+					"Glenn": { totalTime: 0 },
+					"Xavier": { totalTime: 0 }
+				};
+				updatePlayerTimeCards();
+			}
+		});
+
+        // Toggle timer function
+        function toggleTimer(button) {
+			let isPhase = button.hasAttribute('data-phase');
+			let name = isPhase ? button.getAttribute('data-phase') : button.getAttribute('data-player');
+			let now = new Date();
+			
+			// Check if this is a player button and if player is absent
+			if (!isPhase) {
+				// Get absent player from the dialog selection
+				const absentPlayer = document.getElementById('dialogAbsentPlayer').value;
+				if (name === absentPlayer) {
+					showToast(`${name} is marked as absent`);
+					return;
+				}
+			}
+
+			if (!timers[name]) {
+				// Start timer
+				startTimer(button, name, now);
+			} else {
+				// Stop timer and log
+				stopAndLogTimer(button, name, now);
+			}
+		}
+
+        // Cancel timer without logging (for long press)
+        function cancelTimer(button) {
+            let isPhase = button.hasAttribute('data-phase');
+            let name = isPhase ? button.getAttribute('data-phase') : button.getAttribute('data-player');
+
+            if (timers[name]) {
+                // Just cancel the timer without logging
+                clearInterval(intervals[name]);
+                delete timers[name];
+                delete intervals[name];
+
+                button.textContent = name;
+                button.classList.remove('active');
+
+                // If canceling "Round Prep", cancel all player timers too
+                if (name === "Round Prep") {
+                    players.forEach(player => {
+                        if (timers[player]) {
+                            let playerBtn = document.querySelector(`button[data-player="${player}"]`);
+                            if (playerBtn) {
+                                cancelTimer(playerBtn);
+                            }
+                        }
+                    });
+                }
+                
+                // Show toast notification
+                showToast(`${name} timer canceled`);
+            }
+        }
+
+        // Start timer helper function
+		function startTimer(button, name, startTime) {
+			timers[name] = startTime;
+			button.classList.add('active');
+
+			// Update duration display
+			intervals[name] = setInterval(() => {
+				let elapsed = Math.ceil((new Date().getTime() - timers[name].getTime()) / 60000);
+				elapsed = elapsed < 1 ? "<1" : elapsed;
+				button.textContent = `${name} - ${elapsed}m`;
+			}, 1000);
+
+			// If the phase is "Round Prep", start all player timers except absent player
+			if (name === "Round Prep") {
+				let absentPlayer = document.getElementById('dialogAbsentPlayer').value;
+				
+				players.forEach(player => {
+					if (player !== absentPlayer) {
+						let playerBtn = document.querySelector(`button[data-player="${player}"]`);
+						if (playerBtn && !timers[player]) {
+							toggleTimer(playerBtn);
+						}
+					}
+				});
+			}
+		}
+
+        // Update log table
+        function updateLogTable() {
+            const logTableBody = document.getElementById('logTableBody');
+            logTableBody.innerHTML = '';
+
+            logs.forEach((log, index) => {
+                const row = document.createElement('tr');
+                
+                // Name column
+                const nameCell = document.createElement('td');
+                nameCell.textContent = log.name;
+                row.appendChild(nameCell);
+                
+                // Start time column
+                const startCell = document.createElement('td');
+                startCell.textContent = log.startTime.toLocaleTimeString();
+                row.appendChild(startCell);
+                
+                // End time column
+                const endCell = document.createElement('td');
+                endCell.textContent = log.endTime.toLocaleTimeString();
+                row.appendChild(endCell);
+                
+                // Duration column (editable)
+                const durationCell = document.createElement('td');
+                const durationInput = document.createElement('input');
+                durationInput.type = 'number';
+                durationInput.value = log.duration;
+                durationInput.min = 1;
+                durationInput.className = 'editable';
+                durationInput.addEventListener('change', (e) => {
+                    const newDuration = parseInt(e.target.value) || 1;
+                    logs[index].duration = newDuration;
+                    
+                    // If it's a player log, update the summary
+                    if (log.type === 'player') {
+                        updatePlayerSummary();
+                    }
+                });
+                durationCell.appendChild(durationInput);
+                row.appendChild(durationCell);
+                
+                // Delete button
+                const actionCell = document.createElement('td');
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.style.minWidth = 'auto';
+                deleteBtn.style.padding = '5px 10px';
+                deleteBtn.addEventListener('click', () => {
+                    logs.splice(index, 1);
+                    updateLogTable();
+                    
+                    // If it's a player log, update the summary
+                    if (log.type === 'player') {
+                        updatePlayerSummary();
+                    }
+                });
+                actionCell.appendChild(deleteBtn);
+                row.appendChild(actionCell);
+                
+                logTableBody.appendChild(row);
+            });
+        }
+
+     function updatePlayerTimeCards(absentPlayer) {
+        const playerTimeCards = document.getElementById('playerTimeCards');
+        playerTimeCards.innerHTML = '';
+        
+        // Calculate max time for gauge scaling
+        let maxTime = 1; // Default to 1 to avoid division by zero
+        players.forEach(player => {
+            if (player !== absentPlayer && playerSummary[player].totalTime > maxTime) {
+                maxTime = playerSummary[player].totalTime;
+            }
+        });
+        
+        // Color array for gauge fills
+        const gaugeColors = [
+            '#4285f4', // Google blue
+            '#ea4335', // Google red
+            '#fbbc05', // Google yellow
+            '#34a853', // Google green
+            '#8a4af3'  // Purple
+        ];
+        
+        // Create cards for active players only
+        players.forEach((player, index) => {
+            if (player !== absentPlayer) {
+                const card = document.createElement('div');
+                card.className = 'player-time-card';
+                card.id = `player-card-${player}`;
+                
+                // Add active timer indication
+                if (timers[player]) {
+                    card.classList.add('active-timer');
+                }
+                
+                const nameElem = document.createElement('div');
+                nameElem.className = 'player-name';
+                nameElem.textContent = player;
+                
+                // Calculate minutes and seconds
+                const totalMinutes = getPlayerTotalTime(player);
+                const minutes = Math.floor(totalMinutes);
+                const seconds = Math.round((totalMinutes - minutes) * 60);
+                
+                const timeElem = document.createElement('div');
+                timeElem.className = 'player-time';
+                timeElem.id = `player-time-${player}`;
+                timeElem.innerHTML = `${minutes}<span class="player-time-unit">m</span> <span class="player-seconds">${seconds}s</span>`;
+                
+                // Add gauge
+                const gaugeContainer = document.createElement('div');
+                gaugeContainer.className = 'gauge-container';
+                
+                const gaugeFill = document.createElement('div');
+                gaugeFill.className = 'gauge-fill';
+                gaugeFill.id = `player-gauge-${player}`;
+                gaugeFill.style.width = `${(totalMinutes / maxTime) * 100}%`;
+                gaugeFill.style.backgroundColor = gaugeColors[index % gaugeColors.length];
+                
+                gaugeContainer.appendChild(gaugeFill);
+                
+                card.appendChild(nameElem);
+                card.appendChild(timeElem);
+                card.appendChild(gaugeContainer);
+                
+                playerTimeCards.appendChild(card);
+            }
+        });
+    }
+	
+	function getPlayerTotalTime(player) {
+        let totalTime = playerSummary[player].totalTime;
+        
+        // Add current active timer time if running
+        if (timers[player]) {
+            const activeTime = (new Date() - timers[player]) / 60000; // Convert ms to minutes
+            totalTime += activeTime;
+        }
+        
+        return totalTime;
+    }
+	
+    function updatePlayerTimeCardsLive(absentPlayer) {
+        // Get absent player from the dialog
+        if (!absentPlayer) {
+            absentPlayer = document.getElementById('dialogAbsentPlayer').value;
+        }
+        
+        // Calculate max time for gauge scaling with smart rescaling
+        let maxTime = 1; // Default to avoid division by zero
+        
+        // First pass: find current maximum time
+        players.forEach(player => {
+            if (player !== absentPlayer) {
+                const totalTime = getPlayerTotalTime(player);
+                if (totalTime > maxTime) {
+                    maxTime = totalTime;
+                }
+            }
+        });
+        
+        // Smart rescaling: Round up to next sensible increment based on max time
+        if (maxTime <= 2) {
+            maxTime = Math.ceil(maxTime * 2) / 2; // Round to nearest 0.5 for small values
+        } else if (maxTime <= 5) {
+            maxTime = Math.ceil(maxTime); // Round to nearest 1 for medium values
+        } else if (maxTime <= 15) {
+            maxTime = Math.ceil(maxTime / 5) * 5; // Round to nearest 5 for larger values
+        } else {
+            maxTime = Math.ceil(maxTime / 10) * 10; // Round to nearest 10 for very large values
+        }
+        
+        // Update each visible player card
+        players.forEach(player => {
+            if (player !== absentPlayer) {
+                const timeElem = document.getElementById(`player-time-${player}`);
+                const gaugeElem = document.getElementById(`player-gauge-${player}`);
+                const cardElem = document.getElementById(`player-card-${player}`);
+                
+                if (timeElem && gaugeElem) {
+                    // Calculate minutes and seconds
+                    const totalMinutes = getPlayerTotalTime(player);
+                    const minutes = Math.floor(totalMinutes);
+                    const seconds = Math.round((totalMinutes - minutes) * 60);
+                    
+                    // Update the time text
+                    timeElem.innerHTML = `${minutes}<span class="player-time-unit">m</span> <span class="player-seconds">${seconds}s</span>`;
+                    
+                    // Update the gauge with rescaled value
+                    gaugeElem.style.width = `${(totalMinutes / maxTime) * 100}%`;
+                    
+                    // Update active timer styling (blue bottom border instead of flashing)
+                    if (timers[player]) {
+                        cardElem.classList.add('active-timer');
+                    } else {
+                        cardElem.classList.remove('active-timer');
+                    }
+                }
+            }
+        });
+    }
+
+    function stopAndLogTimer(button, name, endTime) {
+        let startTime = new Date(timers[name]);
+        let durationMs = endTime - startTime;
+        let durationMinutes = durationMs / 60000; // Store exact minutes with decimals
+        
+        // Add to logs
+        logs.push({
+            name: name,
+            startTime: startTime,
+            endTime: endTime,
+            duration: Math.ceil(durationMinutes), // Keep the rounded version for display
+            exactDuration: durationMinutes // Store exact duration
+        });
+
+        // Update summary for players with exact time
+        if (button.hasAttribute('data-player')) {
+            playerSummary[name].totalTime += durationMinutes;
+        }
+
+        clearInterval(intervals[name]);
+        delete timers[name];
+        delete intervals[name];
+
+        button.textContent = name;
+        button.classList.remove('active');
+
+        // Update log table
+        updateLogTable();
+
+        // If the phase is "Round Prep", end all player timers
+        if (name === "Round Prep") {
+            players.forEach(player => {
+                if (timers[player]) {
+                    let playerBtn = document.querySelector(`button[data-player="${player}"]`);
+                    if (playerBtn) {
+                        toggleTimer(playerBtn);
+                    }
+                }
+            });
+        }
+    }
+    
+    // Update the player summary function to remove turnCount
+    function updatePlayerSummary() {
+        // Reset summary
+        players.forEach(player => {
+            playerSummary[player] = { totalTime: 0 };
+        });
+        
+        // Recalculate from logs
+        logs.forEach(log => {
+            if (log.type === 'player' && players.includes(log.name)) {
+                // Use the exact duration if available, otherwise use the integer duration
+                const durationInMinutes = log.exactDuration || log.duration;
+                playerSummary[log.name].totalTime += durationInMinutes;
+            }
+        });
+    }
+
+	// Export logs function
+	function exportLogs() {
+		let csvContent = "data:text/csv;charset=utf-8,";
+		
+		// Add headers
+		csvContent += "Name,Type,Start Time,End Time,Duration (min)\n";
+		
+		// Add data rows
+		logs.forEach(log => {
+			csvContent += `${log.name},${log.type},${log.startTime.toLocaleTimeString()},${log.endTime.toLocaleTimeString()},${log.duration}\n`;
+		});
+		
+		// Add summary section
+		csvContent += "\nPlayer Summary\n";
+		csvContent += "Player,Total Time (min),Turn Count\n";
+		
+		const absentPlayer = document.getElementById('absentPlayer').value;
+		
+		players.forEach(player => {
+			if (player !== absentPlayer) {
+				csvContent += `${player},${playerSummary[player].totalTime},${playerSummary[player].turnCount}\n`;
+			}
+		});
+		
+		// Create download link
+		const encodedUri = encodeURI(csvContent);
+		const link = document.createElement("a");
+		link.setAttribute("href", encodedUri);
+		const timestamp = new Date().toISOString().replace(/[:\-T]/g, "").split(".")[0];
+		link.setAttribute("download", `game_logs_${timestamp}.csv`);
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+	}
+
+	// Toast notification
+	function showToast(message) {
+		const toast = document.createElement('div');
+		toast.textContent = message;
+		toast.style.position = 'fixed';
+		toast.style.bottom = '20px';
+		toast.style.left = '50%';
+		toast.style.transform = 'translateX(-50%)';
+		toast.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+		toast.style.color = 'white';
+		toast.style.padding = '10px 20px';
+		toast.style.borderRadius = '5px';
+		toast.style.zIndex = '1000';
+		
+		document.body.appendChild(toast);
+		
+		setTimeout(() => {
+			toast.style.opacity = '0';
+			toast.style.transition = 'opacity 0.5s ease';
+			setTimeout(() => document.body.removeChild(toast), 500);
+		}, 2000);
+	}
+    </script>
+</body>
+
 </html>
