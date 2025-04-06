@@ -664,8 +664,8 @@
                 const durationCell = document.createElement('td');
                 const durationInput = document.createElement('input');
                 durationInput.type = 'number';
-                durationInput.value = log.duration;
-                durationInput.min = 1;
+                durationInput.value = log.exactDuration;
+                durationInput.min = 0;
                 durationInput.className = 'editable';
                 durationInput.addEventListener('change', (e) => {
                     const newDuration = parseInt(e.target.value) || 1;
@@ -909,7 +909,7 @@
 		
 		// Add data rows
 		logs.forEach(log => {
-			csvContent += `${log.name},${log.type},${log.startTime.toLocaleTimeString()},${log.endTime.toLocaleTimeString()},${log.duration}\n`;
+			csvContent += `${log.name},${log.type},${log.startTime.toLocaleTimeString()},${log.endTime.toLocaleTimeString()},${log.exactDuration}\n`;
 		});
 		
 		// Add summary section
